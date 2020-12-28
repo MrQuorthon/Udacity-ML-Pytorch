@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(description='Testing a Neural Network with the 
 parser.add_argument('--checkpoint_path', type=str,
                     help='path to recover and reload checkpoint',default='checkpoint.pth')
 parser.add_argument('--image_path', type=str,
-                    help='/path/to/image',default='flowers/test/102/image_08023.jpg')
+                    help='/path/to/image',default='flowers/test/18/image_04277.jpg')
 parser.add_argument('--top_k', type=int,
                     help='top k: top categories by prob predictions',default=5)
 parser.add_argument('--cat_to_name', type=str,
@@ -86,19 +86,16 @@ def process_image(image_path):
                                           transforms.ToTensor(),
                                           transforms.Normalize([0.485, 0.456, 0.406],
                                                                [0.229, 0.224, 0.225])])
-    image_transf = transform_image(image)
+    image = transform_image(image)
     
-    return image_transf
+    return image
 
 
 ## Class Prediction
 def predict(image_path, checkpoint_path, network, top_k, device):
     model = Reload_model(checkpoint_path, network)
     image = process_image(image_path)
-    if device == 'cuda':
-        image = torch.from_numpy(image).type(torch.cuda.FloatTensor)
-    else:
-        image = torch.from_numpy(image).type(torch.FloatTensor)    
+    image = torch.FloatTensor(image)
     image = image.unsqueeze_(0)
 
     model.to(device)
@@ -108,19 +105,30 @@ def predict(image_path, checkpoint_path, network, top_k, device):
     with torch.no_grad():
         logps = model.forward(image)
     
-    ps = F.softmax(logps,dim=1)
-    probs, classes = ps.topk(top_k)
-    probs = np.array(probs[0][0])
-    classes = [cat_to_name[str(index + 1)] for index in np.array(probs[1][0])]
-    return probs, classes 
+    ps = torch.exp(logps).data
+    probs, classes = ps.topk(top_k, dim=1)
+    probs = probs.cpu().numpy()[0]
+    classes = classes.cpu().numpy()
+    classes_list = list()
+    classes_index = {model.class_to_idx[i]: i for i in model.class_to_idx}
+    for label in classes[0]:
+        classes_list.append(cat_to_name[classes_index[label]])
+    return probs, classes_list
 
 
-
-def main():
-    Reload_model(checkpoint_path, network)
-    process_image(image_path)
-    predict(checkpoint_path, image_path, network, top_k, device) 
     
+def main():
+    model = Reload_model(checkpoint_path, network)
+    image = process_image(image_path)
+    probs, classes = predict(image_path, checkpoint_path, network, top_k, device)
+    
+    print("Probability:", probs)
+    print("Class names:", classes)
+    
+    names = []
+    for i in classes:
+        names += [cat_to_name[i]]
+    print(names)
     
     
 if __name__== "__main__":
