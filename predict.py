@@ -58,18 +58,17 @@ with open('cat_to_name.json', 'r') as f:
 # Loading the checkpoint
 
 def Reload_model(checkpoint_path, network):
-    checkpoint = torch.load(checkpoint_path)
     if network == 'vgg19':
         model = models.vgg19(pretrained = True)
     else:
         model = models.densenet121(pretrained = True) 
-
-    model.class_to_idx = checkpoint['class_to_idx']
-    classifier.load_state_dict(checkpoint['classifier'])
+    checkpoint = torch.load(checkpoint_path)
+    classifier = checkpoint['classifier']
+    optimizer = checkpoint['optimizer']
     model.classifier = classifier
+    model.class_to_idx = checkpoint['class_to_idx']
     model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
-    epoch = checkpoint['epoch']    
+    epochs = checkpoint['epochs']    
     for parameter in model.parameters():
         parameter.requires_grad = False
     
@@ -77,26 +76,24 @@ def Reload_model(checkpoint_path, network):
     return model
 
 
-
 # Inference for classification
 
 ## Image Preprocessing
-def process_image(image_j): 
-    image_j = (image_path) 
-    image_import = Image.open(image_j)
+def process_image(image_path): 
+    image = Image.open(image_path)
     transform_image = transforms.Compose([transforms.Resize(256),
                                           transforms.CenterCrop(224),
                                           transforms.ToTensor(),
                                           transforms.Normalize([0.485, 0.456, 0.406],
                                                                [0.229, 0.224, 0.225])])
-    image_transf = transform_image(image_import)
+    image_transf = transform_image(image)
     
     return image_transf
 
 
 ## Class Prediction
 def predict(image_path, checkpoint_path, network, top_k, device):
-    model = load_checkpoint(checkpoint_path, network)
+    model = Reload_model(checkpoint_path, network)
     image = process_image(image_path)
     if device == 'cuda':
         image = torch.from_numpy(image).type(torch.cuda.FloatTensor)
@@ -113,53 +110,18 @@ def predict(image_path, checkpoint_path, network, top_k, device):
     
     ps = F.softmax(logps,dim=1)
     probs, classes = ps.topk(top_k)
+    probs = np.array(probs[0][0])
+    classes = [cat_to_name[str(index + 1)] for index in np.array(probs[1][0])]
     return probs, classes 
 
 
-## Sanity Checking
-def sanity_check():
-    model = Reload_model(checkpoint_path, network)
-
-    plt.rcParams['figure.figsize'] = (10,6)
-    plt.subplot(211)
-    
-    index = 1
-    path = image_path
-
-    probs = predict(path, model)
-    image = process_image(path)
-
-    axs = imshow(image, ax = plt)
-    axs.axis('off')
-    axs.title(cat_to_name[str(index)])
-    axs.show()
-    
-    j = np.array(probs[0][0])
-    k = [cat_to_name[str(index + 1)] for index in np.array(probs[1][0])]
-        
-    N=float(len(k))
-    fig,ax = plt.subplots(figsize=(10,6))
-    width = 0.9
-    tickLocations = np.arange(N)
-    ax.bar(tickLocations, j, width, linewidth=5.0, align = 'center')
-    ax.set_xticks(ticks = tickLocations)
-    ax.set_xticklabels(k)
-    ax.set_xlim(min(tickLocations)-0.75,max(tickLocations)+0.75)
-    ax.set_yticks([0.25,0.5,0.75,1])
-    ax.set_ylim((0,1))
-    ax.yaxis.grid(True)
-
-    plt.show()
-
-sanity_check()
 
 def main():
     Reload_model(checkpoint_path, network)
-    process_image(image)
-    imshow(image, ax=None, title=None)
-    predict(checkpoint_path, image_path, image, network, top_k, device)
-    sanity_check()
-
-
+    process_image(image_path)
+    predict(checkpoint_path, image_path, network, top_k, device) 
+    
+    
+    
 if __name__== "__main__":
     main()
