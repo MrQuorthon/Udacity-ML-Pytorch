@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(description='Testing a Neural Network with the 
 parser.add_argument('--checkpoint_path', type=str,
                     help='path to recover and reload checkpoint',default='checkpoint.pth')
 parser.add_argument('--image_path', type=str,
-                    help='/path/to/image',default='flowers/test/18/image_04277.jpg')
+                    help='/path/to/image',default='flowers/test/1/image_06743.jpg')
 parser.add_argument('--top_k', type=int,
                     help='top k: top categories by prob predictions',default=5)
 parser.add_argument('--cat_to_name', type=str,
@@ -106,7 +106,7 @@ def predict(image_path, checkpoint_path, network, top_k, device):
         logps = model.forward(image)
     
     ps = torch.exp(logps).data
-    probs, classes = ps.topk(top_k, dim=1)
+    probs, classes = ps.topk(top_k)
     probs = probs.cpu().numpy()[0]
     classes = classes.cpu().numpy()
     classes_list = list()
@@ -114,7 +114,6 @@ def predict(image_path, checkpoint_path, network, top_k, device):
     for label in classes[0]:
         classes_list.append(cat_to_name[classes_index[label]])
     return probs, classes_list
-
 
     
 def main():
