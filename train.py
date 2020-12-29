@@ -34,6 +34,8 @@ parser.add_argument('--device', type=str,
                     help='Choose -cuda- gpu or internal -cpu-', default='cpu')
 parser.add_argument('--save_dir', type=str,
                     help='path to directory to save the checkpoints',default='checkpoint.pth')
+parser.add_argument('--top_k', type=int,
+                    help='top k: top categories by prob predictions',default=5)
 
 args = parser.parse_args()
 data_dir = args.data_dir
@@ -43,6 +45,8 @@ hidden_units = args.hidden_units
 epochs = args.epochs
 device = args.device
 save_dir = args.save_dir
+top_k = args.top_k
+
    
 
 # TODO: Load and transform the datasets
@@ -196,7 +200,7 @@ def modeltrainer(epochs, data_dir, device, network, hidden_units, lr):
 # Save the checkpoint
 def checkpoint(data_dir, save_dir, device, network, hidden_units, lr):
     train_data, train_loader, valid_loader, test_loader = data_load_transform(data_dir)
-    model = modelbuilder(device, network, hidden_units, lr)
+    model = modeltrainer(epochs, data_dir, device, network, hidden_units, lr)
     optimizer = optim.Adam(model.classifier.parameters(), lr)
     model.class_to_idx = train_data.class_to_idx
     model.cpu()
