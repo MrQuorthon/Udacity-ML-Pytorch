@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(description='Testing a Neural Network with the 
 parser.add_argument('--checkpoint_path', type=str,
                     help='path to recover and reload checkpoint',default='checkpoint.pth')
 parser.add_argument('--image_path', type=str,
-                    help='/path/to/image',default='flowers/test/1/image_06743.jpg')
+                    help='/path/to/image',default='flowers/test/71/image_04512.jpg')
 parser.add_argument('--top_k', type=int,
                     help='top k: top categories by prob predictions',default=5)
 parser.add_argument('--cat_to_name', type=str,
@@ -64,17 +64,14 @@ def Reload_model(checkpoint_path, network):
         model = models.densenet121(pretrained = True) 
     checkpoint = torch.load(checkpoint_path)
     classifier = checkpoint['classifier']
-    optimizer = checkpoint['optimizer']
     model.classifier = classifier
     model.class_to_idx = checkpoint['class_to_idx']
     model.load_state_dict(checkpoint['state_dict'])
-    epochs = checkpoint['epochs']    
     for parameter in model.parameters():
         parameter.requires_grad = False
     
     model.eval()
     return model
-
 
 # Inference for classification
 
@@ -104,11 +101,11 @@ def predict(image_path, checkpoint_path, network, top_k, device):
     
     with torch.no_grad():
         logps = model.forward(image)
-    
     ps = torch.exp(logps).data
     probs, classes = ps.topk(top_k)
     probs = probs.cpu().numpy()[0]
     classes = classes.cpu().numpy()
+    print(classes)
     classes_list = list()
     classes_index = {model.class_to_idx[i]: i for i in model.class_to_idx}
     for label in classes[0]:
@@ -119,16 +116,12 @@ def predict(image_path, checkpoint_path, network, top_k, device):
 def main():
     model = Reload_model(checkpoint_path, network)
     image = process_image(image_path)
-    probs, classes = predict(image_path, checkpoint_path, network, top_k, device)
+    probs, classes_list = predict(image_path, checkpoint_path, network, top_k, device)
     
+
+    print("Class names:", classes_list)
     print("Probability:", probs)
-    print("Class names:", classes)
-    
-    names = []
-    for i in classes:
-        names += [cat_to_name[i]]
-    print(names)
-    
+
     
 if __name__== "__main__":
     main()
